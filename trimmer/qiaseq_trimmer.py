@@ -213,6 +213,8 @@ class QiaSeqTrimmer(Trimmer):
         syn_side_overlap    = False
         primer_id = "-1:-1"
         primer_error = "-1:-1"
+        self._est_fragsize_syn_side = "-1:-1"
+        self._est_fragsize_pr_side  = "-1:-1"        
         
         # unpack R1,R2 info
         r1_id,r1_seq,r1_qual = self._r1_info
@@ -323,8 +325,6 @@ class QiaSeqTrimmer(Trimmer):
         primer_error = str(editdist)
 
         # look for overlap on synthetic side , i.e. align endo seq from R2 on R1
-        self._est_fragsize_syn_side = "-1:-1"
-        self._est_fragsize_pr_side  = "-1:-1"
         syn_side_overlap_start,syn_side_overlap_end,editdist = self.synthetic_side_check(r1_seq,r2_seq)
         if syn_side_overlap_start != -1: # synthetic side overlap was successful
             self._est_fragsize_syn_side = str(syn_side_overlap_end + 1) + str("-") + str(editdist)
