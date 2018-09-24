@@ -280,24 +280,26 @@ class Trimmer(object):
         '''  
         query = self.revcomp(r2_seq[self.synthetic_oligo_len:self.synthetic_oligo_len+self.overlap_check_len])
         if len(query) == 0:
-            return (-1,-1)
+            return (-1,-1,-1)
         alignment = edlib.align(query,r1_seq,mode="HW",task="locations")
+
         if float(alignment["editDistance"])/self.overlap_check_len <= self.max_mismatch_rate_overlap:
-            return alignment["locations"][-1]
+            return (alignment["locations"][-1][0], alignment['locations'][-1][1], alignment["editDistance"])
         else:
-            return (-1,-1)
+            return (-1,-1,alignment["editDistance"])
         
     def primer_side_check(self,primer_end,r1_seq,r2_seq):
         '''
         '''
         query = self.revcomp(r1_seq[primer_end+1:primer_end+1+self.overlap_check_len])
         if len(query) == 0:
-            return (-1,-1)
+            return (-1,-1,-1)
         alignment = edlib.align(query,r2_seq,mode="HW",task="locations")
+
         if float(alignment["editDistance"])/self.overlap_check_len <= self.max_mismatch_rate_overlap:
-            return alignment["locations"][-1]
+            return (alignment["locations"][-1][0], alignment['locations'][-1][1], alignment["editDistance"])
         else:
-            return (-1,-1)        
+            return (-1,-1,alignment["editDistance"])
         
     def quality_trim_(self,qual_string,seq_string,cutoff,base=33):
         return quality_trim(qual_string.decode("ascii"),seq_string.decode("ascii"),cutoff,self.is_nextseq,base)

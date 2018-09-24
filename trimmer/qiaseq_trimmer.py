@@ -153,6 +153,9 @@ class QiaSeqTrimmer(Trimmer):
         primer_id    = primer_id.encode("ascii")
         primer_error = primer_error.encode("ascii")
 
+        est_fragsize_syn = b":".join([b"synFragSize",self._est_fragsize_syn_side.encode("ascii")])
+        est_fragsize_pr  = b":".join([b"prFragSize",self._est_fragsize_pr_side.encode("ascii")])
+
         if self.no_tagnames:
             umi_info = umi
             primer_info = primer_id
@@ -163,7 +166,7 @@ class QiaSeqTrimmer(Trimmer):
             primer_error_info = b":".join([self.tagname_primer_error,b"Z",primer_error])
         
         if self._duplex_tag is None:
-            return self.tag_seperator.join([read_id[0:idx],umi_info,primer_info,primer_error_info])
+            return self.tag_seperator.join([read_id[0:idx],umi_info,primer_info,primer_error_info,est_fragsize_syn,est_fragsize_pr])
         else:
             duplex_info = b":".join([self.tagname_duplex,b"Z",self._duplex_tag])
             return self.tag_seperator.join([read_id[0:idx],umi_info,primer_info,primer_error_info,duplex_info])
@@ -208,8 +211,8 @@ class QiaSeqTrimmer(Trimmer):
         # init local variables
         primer_side_overlap = False
         syn_side_overlap    = False
-        primer_id = "-1"
-        primer_error = "-1"
+        primer_id = "-1:-1"
+        primer_error = "-1:-1"
         
         # unpack R1,R2 info
         r1_id,r1_seq,r1_qual = self._r1_info
@@ -320,14 +323,18 @@ class QiaSeqTrimmer(Trimmer):
         primer_error = str(editdist)
 
         # look for overlap on synthetic side , i.e. align endo seq from R2 on R1
-        syn_side_overlap_start,syn_side_overlap_end = self.synthetic_side_check(r1_seq,r2_seq)
+        self._est_fragsize_syn_side = "-1:-1"
+        self._est_fragsize_pr_side  = "-1:-1"
+        syn_side_overlap_start,syn_side_overlap_end,editdist = self.synthetic_side_check(r1_seq,r2_seq)
         if syn_side_overlap_start != -1: # synthetic side overlap was successful
+            self._est_fragsize_syn_side = str(syn_side_overlap_end + 1) + str("-") + str(editdist)
             syn_side_overlap = True
 
         if self.check_primer_side or not syn_side_overlap:
             # look for overlap on primer side , i.e. align endo seq from R1 on R2
-            primer_side_overlap_start,primer_side_overlap_end = self.primer_side_check(r1_primer_end_pos,r1_seq,r2_seq)
+            primer_side_overlap_start,primer_side_overlap_end,editdist = self.primer_side_check(r1_primer_end_pos,r1_seq,r2_seq)
             if primer_side_overlap_start != -1:
+                self._est_fragsize_pr_side = str(len(r2_seq[self.synthetic_oligo_len:primer_side_overlap_end + r1_primer_end_pos])) + str("-") + str(editdist)
                 primer_side_overlap = True
 
         num_primer_bases_R2 = r1_primer_end_pos + 1 if self.primer3_R2 == -1 else self.primer3_R2 # keep all primer bases if primer3_R2 is -1
