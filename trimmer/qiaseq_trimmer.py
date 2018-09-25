@@ -334,7 +334,7 @@ class QiaSeqTrimmer(Trimmer):
             # look for overlap on primer side , i.e. align endo seq from R1 on R2
             primer_side_overlap_start,primer_side_overlap_end,editdist = self.primer_side_check(r1_primer_end_pos,r1_seq,r2_seq)
             if primer_side_overlap_start != -1:
-                self._est_fragsize_pr_side = str(len(r2_seq[self.synthetic_oligo_len:primer_side_overlap_end+1 + r1_primer_end_pos+1])) + str("-") + str(editdist)
+                self._est_fragsize_pr_side = str(primer_side_overlap_end + 1 - self.synthetic_oligo_len + r1_primer_end_pos + 1) + str("-") + str(editdist)
                 primer_side_overlap = True
 
         num_primer_bases_R2 = r1_primer_end_pos + 1 if self.primer3_R2 == -1 else self.primer3_R2 # keep all primer bases if primer3_R2 is -1
