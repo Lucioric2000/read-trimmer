@@ -185,6 +185,46 @@ class Trimmer(object):
         assert isinstance(val,int),"Please specify an integer value for k"
         self._r = val
 
+    def verify_3prime_trim(self,read_seq,trim_end,oligo):
+        ''' If trimming more than x bases verify whether the trimmed sequence has the common sequence
+        :param str read_seq : R1/R2 read sequence
+        :param int trim_end : R1/R2 3' trim position , i.e. first base of sequence to trim
+        '''
+        alignment = edlib.align(oligo,read_seq[trim_end:],mode="HW",task="locations")
+        if alignment["editDistance"] <= 2:
+            return True
+        else:
+            return False
+
+    def identify_umi(self,r2_seq,r2_qual):
+        ''' Look for common sequence on R2 and identify cut position for overlap search
+        Can also get a better UMI sequence this way
+        :param str r2_seq  : R2 sequence
+        :param str r2_qual : R2 quality string
+        '''
+        found = False
+        common_seq = b"ATTGGAGTCCT"
+        alignment = edlib.align(common_seq,r2_seq,mode="HW",task="locations")
+
+        if alignment["editDistance"] <= 3: # allow 3 mismatch/indel
+            if alignment["locations"][-1][1] <= 52: # cap at 52 b.p , i.e. common seq can end atmost 52 b.p from 5' end of R2
+                self.synthetic_oligo_len = alignment["locations"][-1][1] + 1
+                cut_pos = alignment["locations"][-1][0]
+                umi      = r2_seq[cut_pos - self.umi_len:cut_pos]
+                umi_qual = r2_qual[cut_pos - self.umi_len:cut_pos]                
+                found = True
+                
+        if not found:
+            if not r2_seq.startswith(b"N"):
+                umi = r2_seq[0:self.umi_len]
+                umi_qual = r2_qual[0:self.umi_len]
+            else:
+                umi = r2_seq[1:self.umi_len+1]
+                umi_qual = r2_qual[1:self.umi_len+1]
+                self.synthetic_oligo_len += 1
+
+        return (umi,umi_qual)
+        
     def custom_sequencing_adapter_check(self,r1_seq):
         ''' Check for custom sequencing adapter on r1
         :param bytes r1_seq: R1 sequence
@@ -282,6 +322,7 @@ class Trimmer(object):
         if len(query) == 0:
             return (-1,-1)
         alignment = edlib.align(query,r1_seq,mode="HW",task="locations")
+
         if float(alignment["editDistance"])/self.overlap_check_len <= self.max_mismatch_rate_overlap:
             return alignment["locations"][-1]
         else:

@@ -233,14 +233,9 @@ class QiaSeqTrimmer(Trimmer):
             self.synthetic_oligo_len = self.umi_len + (adapter_end_pos + 1)
             
         # get umi
+        # check if common sequence is there on R2 and get umi accordingly
         synthetic_oligo_len = self.synthetic_oligo_len        
-        if not r2_seq.startswith(b"N"):
-            umi = r2_seq[0:self.umi_len]
-            umi_qual = r2_qual[0:self.umi_len]
-        else:
-            umi = r2_seq[1:self.umi_len+1]
-            umi_qual = r2_qual[1:self.umi_len+1]
-            self.synthetic_oligo_len += 1
+        umi,umi_qual = self.identify_umi(r2_seq,r2_qual)
             
         if self.seqtype == "rna":
             self._is_bad_umi = self._umi_filter_rna(umi,umi_qual)            
@@ -259,13 +254,13 @@ class QiaSeqTrimmer(Trimmer):
         if temp > 0:
             self._is_r2_qual_trim = True
         self.r2_qual_trim_len = temp
-        
+
         # update r1,r2
         r1_seq  = r1_seq[0:r1_qual_end]
         r1_qual = r1_qual[0:r1_qual_end]
         r2_seq  = r2_seq[0:r2_qual_end]
         r2_qual = r2_qual[0:r2_qual_end]        
-                    
+
         if len(r1_seq) < self.min_primer_side_len or len(r2_seq) < self.min_umi_side_len: # skip reads too short after qual trimming
             self._is_too_short = True
             self.synthetic_oligo_len = synthetic_oligo_len
@@ -361,19 +356,47 @@ class QiaSeqTrimmer(Trimmer):
             self._is_odd_structure = True
             self.synthetic_oligo_len = synthetic_oligo_len
             return            
-        
-        r1_seq  = r1_seq[r1_trim_start:r1_trim_end]
-        r1_qual = r1_qual[r1_trim_start:r1_trim_end]
-        r2_seq  = r2_seq[r2_trim_start:r2_trim_end]
-        r2_qual = r2_qual[r2_trim_start:r2_trim_end]
 
-        # update bools
+        # check sequences when trimming > x bases on either 3' end
+        # R1 3' end
+        common_seq = b"AGGACTCCAAT"
+        to_trim = True
+        if len(r1_seq) - r1_trim_end > 12:
+            to_trim = self.verify_3prime_trim(r1_seq,r1_trim_end,common_seq)
+            
+        if to_trim:
+            r1_seq  = r1_seq[r1_trim_start:r1_trim_end]
+            r1_qual = r1_qual[r1_trim_start:r1_trim_end]
+        else:
+            r1_seq  = r1_seq[r1_trim_start:]
+            r1_qual = r1_qual[r1_trim_start:]
+            
+        # R2 3' end
+        ## Need to clean this up for better readability
+        to_trim = True
+        if len(r2_seq) - r2_trim_end >= 10:
+            if self.primer3_R2 == -1: # reverse complement of last n bases after the last primer3_R2 bases from 3' end of primer
+                seq_to_check = self.revcomp(primer)
+                to_trim = self.verify_3prime_trim(r2_seq,r2_trim_end - len(primer) ,seq_to_check) 
+            else:
+                seq_to_check = self.revcomp(primer[-(self.primer3_R2+10):-self.primer3_R2])                
+                to_trim = self.verify_3prime_trim(r2_seq,r2_trim_end,seq_to_check)
+        
+        if to_trim:
+            r2_seq  = r2_seq[r2_trim_start:r2_trim_end]
+            r2_qual = r2_qual[r2_trim_start:r2_trim_end]
+        else:
+            r2_seq  = r2_seq[r2_trim_start:]
+            r2_qual = r2_qual[r2_trim_start:]        
+
+        # update bools        
         self._is_r1_primer_trimmed = True
         if r1_trim_end < r1_len:
             self._is_r1_syn_trimmed = True
         if r2_trim_end < r2_len:
-            self._is_r2_primer_trimmed = True        
-        self._is_r1_r2_overlap = primer_side_overlap or syn_side_overlap
+            self._is_r2_primer_trimmed = True
+            
+        self._is_r1_r2_overlap = to_trim and (primer_side_overlap or syn_side_overlap)
         
         # polyA/T trimming if speRNA
         if self.seqtype == "rna":

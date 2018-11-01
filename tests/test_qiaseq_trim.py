@@ -30,8 +30,14 @@ class TestQiaSeqTrimDna(unittest.TestCase):
         # trimmer obj
         self.trimmer_obj = utils.helper_return_qiaseq_obj(self.args)
 
-    def test_overlap_synthetic_side_check(self):
+    def test_primer_trim(self):
+        ''' Test Primer trimming algorithm
         '''
+        pass        
+
+    def test_overlap_synthetic_side_check(self):
+        ''' Test for overlap check and trimming on R1 3' end
+
         '''
         # edit dist = 0
         r1_seq = b"CCCAGGTCACCATCAAATACATCGGAGCCAGCCCCTTCGGAGGGTGCCAGTGGAGACCTGGGGGCCTCCTCTTCAGAGGGCTCCAGCCCTAGTGTCAGGTCCCCACCGCAGGACTCCAATTATCCCGCTTAT"
@@ -64,13 +70,10 @@ class TestQiaSeqTrimDna(unittest.TestCase):
         r2_seq = b"GTAAATTAGGAAATTGGAGTCCTTCGGATTCCAGCTAAATGGATGGCAATTGAATCCCTTTTTGTTCATATCTACACCACGCAAAGTGATCAAAACGCAATACTGTACATT"
         self.assertEqual(self.trimmer_obj.synthetic_side_check(r1_seq,r2_seq),(-1,-1))
 
-    def test_primer_trim(self):
-        ''' Some checks done as part of the test_overlap_primer_side_check below. Need seperate tests here.
-        '''
-        pass
         
     def test_overlap_primer_side_check(self):
-        '''
+        ''' Test for overlap check and trimming on R2 3' end
+
         '''
         # edit dist = 0
         r1_seq = b"GCCTCTTGCTTCTCTTTTCCTATCCTGAGTAGTGGTAATCTACTGGGACGGAACAGCTTTGAGGTGCGTGTTTGTGCCTGTCCTGGGAGAGACCGGCGCACAGAGGAAGAGAATCTCCGCAAGAAAGGGGAGCCTCACCACGAGCTGCCC"
@@ -104,7 +107,11 @@ class TestQiaSeqTrimDna(unittest.TestCase):
         
     def test_qiaseq_trim(self):
         ''' Full trimming routine
+
         '''
+        self.trimmer_obj.primer3_R1 = 8
+        self.trimmer_obj.primer3_R2 = 8
+
         # sucessful overlap on both sides
         self.trimmer_obj.r1_info = (
             b"@M01750:502:000000000-AUK2G:1:1101:12973:1963 1:N:0:2",
@@ -123,7 +130,7 @@ class TestQiaSeqTrimDna(unittest.TestCase):
             b"@M01750:502:000000000-AUK2G:1:1101:12973:1963\tmi:Z:ATAAGCGGGATA\tpr:Z:chr17-1-37883632\tpe:Z:0",
             b"GCGGTGGGGACCTGACACTAGGGCTGGAGCCCTCTGAAGAGGAGGCCCCCAGGTCTCCACTGGCACCCTCCGAAGGGGCTGGCTCCGAT",
             b"HGGGEEGGGGGGHHGHHHHHHHHHHGGGGFGGHGHHHHHHHHHGGGGGGGGGGGHHHHHHHHHHHHGGHGGGEFGGGGGGGGGGHGGGG"))
-
+        
         # umi side overlap fail , primer side sucessful
         self.trimmer_obj.r1_info = (
             b"@M01750:502:000000000-AUK2G:1:1101:15325:1360 2:N:0:2",
@@ -151,6 +158,130 @@ class TestQiaSeqTrimDna(unittest.TestCase):
             b"@M01750:502:000000000-AUK2G:1:1101:15325:1360 2:N:0:2",
             b"AAGTATAGGTGGATTGGAGTCCTCAGACAACTGTTCAAACTGATGGGACCCACTCCATCGAGATTTCACTGTAGCTAGACCAAAATCACCTATTTTTACTATGAGGTCTTCATGAAGAAATATATCTGAGGAGTAGTAAGTAAAGGAAAA",
             b"1>A1>D@FFB1>GGGGGGGGGGHHH1110BG1AA33DGGFEHH211EFGG?GG00B1F1AF//AEBGHGFF22D2AGHGGHGHC?F1110F1B122F/DFFFGEEGHHH1FHGHEBG1>BF1@BFEDF>F/1?BEFD2BFE2G2F1BBGE")
+
+    def test_algorithm_edge_cases(self):
+        ''' Cases where the mate overlap algorithm failed - Identified by Jixin
+        To do :  Need to write fixes for these test cases
+
+        '''
+
+        ## Setup params
+        self.primer_datastruct = PrimerDataStruct(k=8,primer_file=os.path.join(os.path.dirname(__file__),"/home/qiauser/yart/CDHS-13244Z-3587.primer3.txt"),
+                                                  ncpu=1,seqtype="dna",primer_col=3).primer_search_datastruct
+        self.trimmer_obj.primer3_R1 = -1
+        self.trimmer_obj.primer3_R2 = -1
+        self.trimmer_obj.is_nextseq = True
+        
+        #######################################    Extra bases on R2 5' end, too many mismatches between R1,R2    #######################################
+        self.trimmer_obj.r1_info = (           
+            b"@NB500965:15:H5FTGAFXX:1:11101:10000:12084 1:N:0:1",
+            b"AGAGTCCAAAAATACACCCACATACTAAAGGTCAATTGATTAGGGACAAAGGTTCCAAAACACACAATGGGAAAAGGACTCCAATTTGGATCACTCA",
+            b"AAAAAEEEEEEEEEEEEEEAEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEAEEEEEEEEAEEEEEEEEEEEEEAEEEEEEEAEEEEEEE")       
+        self.trimmer_obj.r2_info = (
+            b"@NB500965:15:H5FTGAFXX:1:11101:10000:12084 2:N:0:1",
+            b"TGAATAAAAAAAATCGGAGCACTATACCAAATTATACTTATTGAAACTATTTCCCTAATCAAATAAACATAAATATTTTTATATATTTTTGTACTCTCAAAACGCAATACTGTACATTATATCTGAAGATCTTCTTTTAAGGAAAAAGTTT",
+            b"6A6A6E//EAE<///////////////E/A//EEEEEEE/EEE///<E/E///////</6/A</////<//////<//66///////////////66/////////<///</<///<///</////////////////////A///A////")        
+            
+        self.trimmer_obj.qiaseq_trim(self.primer_datastruct)
+        # Note : Hard to find a solution for this particular example , 11-mer on R2 has 3 mismatch bases, but it is at the correct position. Too many mismatches between reads for overlap
+        #self.assertEqual(self.trimmer_obj.r1_info[1],b"AGAGTCCAAAAATACACCCACATACTAAAGGTCAATTGATTAGGGACAAAGGTTCCAAAACACACAATGGGAAA")        
+        #print (self.trimmer_obj.r1_info, self.trimmer_obj.r2_info)
+        #print("\n")            
+            
+        self.trimmer_obj.r1_info = (
+            b"@NB500965:15:H5FTGAFXX:1:11101:10009:9214 1:N:0:1",
+            b"TGCCCTTCTTTGTCCATTTTGACCTCTGTTGGTTTAAAGTTGGTTTTATCAGAGACGAGGATTGCAACCCCTGCTTTTTTTGCTTTCCATTTGCTTGGTAAATTTTCCTTCATACCTTTATTTTGAGGACTCCAATACCCATTTACTC",
+            b"AAAAAEEEEEA/EE/E/E/E/EEE<AA///AA/<A/EEA/EEE<EAEAEEE/EEEA/E/<EE<E/EEE<E</6<//E/EE<AA<6/A6AA/EE/EEEEEAEEEEE/6EAE/A//E<E6<<AE//A<AAEE<AEAE/EA//</A/<A<A")
+        self.trimmer_obj.r2_info = (
+            b"@NB500965:15:H5FTGAFXX:1:11101:10009:9214 2:N:0:1",
+            b"GGGCAAGAGGACATGTTAATGCTTCTGAGTAAATGGGTATAGGAGTCCTCAAAATAAAGGGATGAAGGAAAATTTACCAAGCAAATGGAAAGCAAAAAAAGCAGGGGTTGAAATCCTCGTCTCTGATAAAACCAACTTTAAACCAAC",
+            b"AA6AAE6EEAEE////</////EEAEAA//EEE<///EEA///E/EEEEEEAEE/EAE/E//E/EE66EEEEAA/E/AAEEEE<EE/EEEEEEEEEEE/AE6A<<EEEE//A//6<<<<<</E</<6AEA<</<<<6//<<A6A<</")
+        self.trimmer_obj.qiaseq_trim(self.primer_datastruct)
+
+        self.assertEqual(self.trimmer_obj.r1_info[1],b"TGCCCTTCTTTGTCCATTTTGACCTCTGTTGGTTTAAAGTTGGTTTTATCAGAGACGAGGATTGCAACCCCTGCTTTTTTTGCTTTCCATTTGCTTGGTAAATTTTCCTTCATACCTTTATTTTG")
+        self.assertEqual(self.trimmer_obj.r2_info[1],b"CAAAATAAAGGGATGAAGGAAAATTTACCAAGCAAATGGAAAGCAAAAAAAGCAGGGGTTGAAATCCTCGTCTCTGATAAAACCAACTTTAAACCAAC")
+        ###################################################################################################################################################################################################
+
+
+        
+
+        
+        #######################################    Extra bases on R2 - failed by 23 bp, ligation of two adapters ?    #######################################
+        self.trimmer_obj.r1_info = (
+            b"@NB500965:15:H5FTGAFXX:1:11101:16294:1196 1:N:0:1",
+            b"GCTCCCAGCTTCCCATGAATTATAGATTATATACACCAGAGTAATTACAAAAATCTCATGTAGGAACTTTCATGTGAGCATTTACTGAGGAAGGACTCCAATGCTTGGGAACGAGGACTCCAATAACCCTAAATCT",
+            b"AAAAAEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEAEEEEE/EEEEEEEEEEEEEEEEEEEEE/EEEEEEEAEEEEEEEEEAEEEEEEEEEEEEEEAEEEAEEAEEEEEEEEEAEEEEEAE<AEEEEEEE<EEE")
+        self.trimmer_obj.r2_info = (
+            b"@NB500965:15:H5FTGAFXX:1:11101:16294:1196 2:N:0:1",
+            b"AGATTTAGGGTTAGGGTATGGCTCGTTCCCAAGCATTGGAGTCCTTCCTCAGTAAATGCTCACATGAAAGTTCCTACATGAGATTTTTGTAAATACTCTGGTGTATATAATCTATAATTCATGGGAAGCTGGGAGCCAAAACGCAATACTG",
+            b"AAAAAEEEEEEE/////6////EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE/EEEEEEEAEAEEEEEEEEEEEEEEEEEAEEEEEEEE/AEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEAE<<AAAEAAAEEEEAAAA<<A<A/")
+        self.trimmer_obj.qiaseq_trim(self.primer_datastruct)
+
+        self.assertEqual(self.trimmer_obj.r1_info[1],b"GCTCCCAGCTTCCCATGAATTATAGATTATATACACCAGAGTAATTACAAAAATCTCATGTAGGAACTTTCATGTGAGCATTTACTGAGGA")
+        self.assertEqual(self.trimmer_obj.r2_info[1],b"TCCTCAGTAAATGCTCACATGAAAGTTCCTACATGAGATTTTTGTAAATACTCTGGTGTATATAATCTATAATTCATGGGAAGCTGGGAGC")        
+        ###################################################################################################################################################################################################
+
+
+
+        
+
+        #######################################    FP endogenous seq trimming - tandem repeat of 25 mer    #######################################
+        self.trimmer_obj.r1_info = (
+            b"@NB500965:15:H5FTGAFXX:1:11101:10012:12318 1:N:0:1",
+            b"CCAGAGTGTTGGAAAGTGAGTTGAAACCAAGCGCCAGCCCCCGGGCAGGTGCTTCGAAGGTAGTAAGTCCTGTGAGATGTTCTGTTCCTGGGGCTTGTCCTGGCCGCACAGCCCCCGGGCAGGTGCTTCAGAGGTCATAAGTCCTGTG",
+            b"AAAAAEEEEEEEEEEEEEEEEEEEEEEAEEEAEEAEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEAAEAEA<EEEEEEEEEEEEEEEEEEEEEEEEAEEAEEEEEEAEEE")
+        self.trimmer_obj.r2_info = (
+            b"@NB500965:15:H5FTGAFXX:1:11101:10012:12318 2:N:0:1",
+            b"GAGAGAATGGGCAGGGGAAGGCTCAAGCCCCAGGAACAGAACATCTCACAGGACTTATGACCTCTGAAGCACCTGCCCGGGGGCTGTGCGGCCAGGACAAGCCCCAGGAACAGAACATCTCACAGGACTTACTACCTTCGAAGCACCTGCC",
+            b"AAAAAEEEEEEE/////66///EEEAEEEEEEEEEEAEEEEEAEEEEEEEEEEEEEEEE<EEEEEE/AEEEEEEEEEAEEAEEEEEEEEEAEEEEE<EEEEEEEEEEE/EEEEEEA/<EEEEAAEE/EAAEAAEEEEAAEEEEEEEEAA</")
+        
+        self.trimmer_obj.qiaseq_trim(self.primer_datastruct)
+        self.assertEqual(self.trimmer_obj.r1_info[1],b"CCAGAGTGTTGGAAAGTGAGTTGAAACCAAGCGCCAGCCCCCGGGCAGGTGCTTCGAAGGTAGTAAGTCCTGTGAGATGTTCTGTTCCTGGGGCTTGTCCTGGCCGCACAGCCCCCGGGCAGGTGCTTCAGAGGTCATAAGTCCTGT")
+        self.assertEqual(self.trimmer_obj.r2_info[1],b"CAAGCCCCAGGAACAGAACATCTCACAGGACTTATGACCTCTGAAGCACCTGCCCGGGGGCTGTGCGGCCAGGACAAGCCCCAGGAACAGAACATCTCACAGGACTTACTACCTTCGAAGCACCTGCC")
+        
+        self.trimmer_obj.r1_info = (
+            b"@NB500965:15:H5FTGAFXX:1:11101:10040:10441 1:N:0:1",
+            b"CCTTTAAATGTACAGAATGTGGCAGATCGTTTACATGTCACACCTAACTCAACATACAGGAATTCATGCTGGAGAGAAACCCTACAAATGTGAAAAATGTGGCAAAGCCTTTAATAGGTCCACATCACTTAGTAAACATAAGAGAATTCAT",
+            b"AAAAAEEEEEEEAE/EEEEE/EEEEEEEEEEEAE/E/<E/E/AEE/EEEAEEEE6EEE/A/E/EAE/EEA/<EAEEE/EA6E<EEEEA//EEEE/EEE/AE/EEEE///A//E//EE<E/E//<A/</<EAAEEEAEE/EE<A/E<E/EAE")
+        self.trimmer_obj.r2_info = (
+            b"@NB500965:15:H5FTGAFXX:1:11101:10040:10441 2:N:0:1",
+            b"ATATGTTTGTATATGGTATGGCTTTTGCCACATTCTTCACATGTGTAGGGTTTCTCTCCAGAATGAATTCGCTTATGTTTACTAAGTTATGTGGACCTAATAAAGGCTATGACACATTTAAAACATTTGTAGGTTTTCTCTCCAGCATGA",
+            b"AAA//EEEEEEA/E////////EEEE6E/EEEEEEEEAEEEE/EEEEE/EA/EEEEEE//</</AEE<A<///A/E/EEAE/EAE///EE/E//AE/EE/AEAE//A/////</AE</<<////<<666/AE////EE//////6<A///")
+
+        self.trimmer_obj.qiaseq_trim(self.primer_datastruct)
+        self.assertEqual(self.trimmer_obj.r1_info[1],b"CCTTTAAATGTACAGAATGTGGCAGATCGTTTACATGTCACACCTAACTCAACATACAGGAATTCATGCTGGAGAGAAACCCTACAAATGTGAAAAATGTGGCAAAGCCTTTAATAGGTCCACATCACTTAGTAAACATAAGAGAATTCAT")
+        self.assertEqual(self.trimmer_obj.r2_info[1],b"TTTGCCACATTCTTCACATGTGTAGGGTTTCTCTCCAGAATGAATTCGCTTATGTTTACTAAGTTATGTGGACCTAATAAAGGCTATGACACATTTAAAACATTTGTAGGTTTTCTCTCCAGCAT")
+        
+        ###################################################################################################################################################################################################
+
+
+
+
+        
+        #######################################    FP endogenous seq trimming - tandem repeat + low quality    #######################################
+        self.trimmer_obj.r1_info = (
+            b"@NB500965:15:H5FTGAFXX:1:11101:10035:3722 1:N:0:1",
+            b"CGTGTGAAGAATGGGTCCTAAGGTTCTTAAAGTGTCCAGGGGTCAAGACCCTGATTCCTCCTTATGTGAAGAAAGGCGTCATAAGGTTATTCAGGTGTCCTGGGGGCCGCACCCTGATTCCTCATCTTGAAAAAATGGGTGGGTGGGGTCG",
+            b"AAAAAEEEEEEEEEEEEEEEEEEEEEEE6EEEEEEEEEEE/AEE/E/AEEE/E//EE//</////A//E6///////EE6//EA/A////E/E//////////</<<//////E/<//AE//A///////E//E///////////AE////")
+        self.trimmer_obj.r2_info = (
+            b"@NB500965:15:H5FTGAFXX:1:11101:10035:3722 2:N:0:1",
+            b"GGAGATCCGGGGATGGGAAAGATGGACACTTAAAGAACCTTAGGACCCATTAATTCACATGAGGAATCAATAATCTACAAAATAGACAAATAAAGAACATTAGGAAAAAATTGTAAAAGAGGAGGAAGAAGAGTGATGACGCCTTAACAA",
+            b"AAAAAEEEEEEE/A<E/6////EEEEEEEEEEEEEAEEEEEEEEEEEEEEE//E///<///E//E//EE//////E/E/////////////E/A/E////6EAA/////////E/////E//////E///////6//E///<//////A/")
+
+        # FP endogenouse seq , weird structure, both R1 and R2 3' end has mysterious extra bases
+        self.trimmer_obj.r1_info = (
+            b"@NB500965:15:H5FTGAFXX:1:11101:10001:15242 1:N:0:1",
+            b"CATCACTGTTTTCCAGCTCGAATGTGTCTTTTCCAAAACCACTCATGGCCCGGCCCACCCCCCACCTGCACCCATAAAAACACCATGCTCAGGGACACAAATTTTAACCCGACGAGATAGGAAGACCACACCTCAGAACTCCAGTAACACC",
+            b"AAA/AA/E////A//AAAEAEA/6//EEE/EEEEEAE/EEEEE/EE//A</////</A///E///EE////6//E/EEE6//A///////////A//6/EE//AA///6/6/6///EA///E///////A/////E/E/<E/</E/<<//A")
+        self.trimmer_obj.r2_info = (
+            b"@NB500965:15:H5FTGAFXX:1:11101:10001:15242 2:N:0:1",
+            b"CGGCGGGAGAAAAAGGCAATGTCTGAGCATGGAGTATTTATGGGTGCAGGATGGGGGTGGGGCGGGCCAAGAGTGGTTTTGGAAAAGACACATTCGAGCTGGAAAACAGTGATGCAAAACGCAATACTGTACATT",
+            b"AAAAA6EEAEE//////6////EEAE/A//E/E///E/E/66///<E<///EE/E///6//AA<</<<E//E/E//E</E/A///E/AE/AAE<</EE/EA/EEE/EEEE/A/A//AEEE/<AA/A/A/E<6//A")
+        self.trimmer_obj.qiaseq_trim(self.primer_datastruct)
+        print(self.trimmer_obj.r1_info)
+        print(self.trimmer_obj.r2_info)
+        ###################################################################################################################################################################################################
+        
         
 if __name__ == '__main__':
         unittest.main()
