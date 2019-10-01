@@ -248,7 +248,7 @@ class Trimmer(object):
         alignment = edlib.align(self.custom_seq_adapter,
                                 r1_seq[0:len(self.custom_seq_adapter)+3],
                                 mode="SHW",task="locations")
-        if float(alignment["editDistance"])/len(self.custom_seq_adapter) <= 0.18:
+        if float(alignment["editDistance"])/len(self.custom_seq_adapter) <= 0.35:
             return alignment["locations"][-1][1]
         else:
             return -1
