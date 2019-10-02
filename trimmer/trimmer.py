@@ -245,6 +245,9 @@ class Trimmer(object):
         :rtype int
         :returns end pos of adapter, -1 if not found
         '''
+        return 21
+
+        '''
         alignment = edlib.align(self.custom_seq_adapter,
                                 r1_seq[0:len(self.custom_seq_adapter)+3],
                                 mode="SHW",task="locations")
@@ -252,6 +255,7 @@ class Trimmer(object):
             return alignment["locations"][-1][1]
         else:
             return -1
+        '''
 
     def primer_trim(self,primer_datastruct,r1_seq):
         ''' Trim primer to said bases if present on read, account for certain mismatch
