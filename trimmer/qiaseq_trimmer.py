@@ -291,7 +291,10 @@ class QiaSeqTrimmer(Trimmer):
                 duplex_info = b":".join([self.tagname_duplex,b"Z",self.duplex_tag])
 
             read_id_info.append(duplex_info)
-        
+
+            # for PD work - add which adapter was identified for this read
+            read_id_info.append(b":".join([b"ZZ", b"Z", self._duplex_adapter_name]))
+
         if self.is_multimodal and self.include_common_seq_tag:
             if self.no_tagnames:
                 multimodal_adaper_info = self.multimodal_adapter_name
