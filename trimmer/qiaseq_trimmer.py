@@ -104,7 +104,7 @@ class QiaSeqTrimmer(Trimmer):
         self.is_umi_side_adapter_readable = kwargs["is_umi_side_adapter_readable"] # move this out to the trimmer class if other products are using it.
         self.tagname_multimodal = kwargs["tagname_multimodal"]
         self.is_multimodal = kwargs["is_multimodal"]
-        self._multimodal_UMIend_adapters = [(b"ATTGGAGTCCT", "dna", b"B"), (b"ACGTTTTTTTTTTTTTTTTTTVN", "rna", b"RT"), (b"ATCTGCGGG", "rna", b"TSO")]
+        self._multimodal_UMIend_adapters = [(b"ATTGGAGTCCT", "dna", b"B"), (b"ACGTTTTTTTTTTTTVN", "rna", b"RT"), (b"ATCTGCGGG", "rna", b"TSO")]   # Adapter with 18 Ts : (b"ACGTTTTTTTTTTTTTTTTTTVN", "rna", b"RT")
         self.trim_polyT_5prime_umi_side = kwargs["trim_polyT_5prime_umi_side"]
         if self.umi_len_alt is None:
             self.umi_len_alt = self.umi_len
