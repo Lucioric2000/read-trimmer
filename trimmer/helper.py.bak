@@ -2,7 +2,7 @@ import sys
 import os
 from argparse import Namespace
 
-from . import qiaseq_trimmer
+import qiaseq_trimmer
 
 def helper_return_qiaseq_obj(args):
     ''' Helper function to initiliaze Trimmer Object

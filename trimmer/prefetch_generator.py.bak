@@ -47,7 +47,7 @@ import sys
 if sys.version_info >= (3, 0):
     import queue as Queue
 else:
-    import queue
+    import Queue
 
 
 class BackgroundGenerator(threading.Thread):
@@ -73,7 +73,7 @@ class BackgroundGenerator(threading.Thread):
         all batches in memory. If you use infinite generator with max_prefetch=-1, it will exceed the RAM size unless dequeued quickly enough.
         """
         threading.Thread.__init__(self)
-        self.queue = queue.Queue(max_prefetch)
+        self.queue = Queue.Queue(max_prefetch)
         self.generator = generator
         self.daemon = True
         self.start()
@@ -83,7 +83,7 @@ class BackgroundGenerator(threading.Thread):
             self.queue.put(item)
         self.queue.put(None)
 
-    def __next__(self):
+    def next(self):
         next_item = self.queue.get()
         if next_item is None:
             raise StopIteration
@@ -91,7 +91,7 @@ class BackgroundGenerator(threading.Thread):
 
     # Python 3 compatibility
     def __next__(self):
-        return next(self)
+        return self.next()
 
     def __iter__(self):
         return self

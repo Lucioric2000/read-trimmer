@@ -11,11 +11,11 @@ import edlib
 
 from pprint import pprint
 
-from . import helper
+import helper
 import pyximport; pyximport.install(language_level=3)
 from _utils import two_fastq_heads
-from .trimmer import PrimerDataStruct, Trimmer
-from .prefetch_generator import BackgroundGenerator
+from trimmer import PrimerDataStruct, Trimmer
+from prefetch_generator import BackgroundGenerator
 
 
 logger = logging.getLogger(__name__)
@@ -870,7 +870,7 @@ def aggregator_and_writer(queue,f_out_r1,f2_out_r2,return_queue):
             trimmed_r1_lines, trimmed_r2_lines, counters = buffer
 
             # unpack and accumulate metric counters
-            for metric,val in list(counters.__dict__.items()):
+            for metric,val in counters.__dict__.items():
                 assert metric in metrics.__dict__, "Encountered unknown metric : {}".format(metric)
                 metrics.__dict__[metric] += val
 
