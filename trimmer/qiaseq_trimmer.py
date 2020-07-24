@@ -7,15 +7,15 @@ import sys
 import threading
 import types
 
-import edlib
+import edlib, helper
 
 from pprint import pprint
 
-from . import helper
+#from . import helper
 import pyximport; pyximport.install(language_level=3)
 from _utils import two_fastq_heads
-from .trimmer import PrimerDataStruct, Trimmer
-from .prefetch_generator import BackgroundGenerator
+from trimmer import PrimerDataStruct, Trimmer
+from prefetch_generator import BackgroundGenerator
 
 
 logger = logging.getLogger(__name__)

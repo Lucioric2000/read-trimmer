@@ -44,10 +44,10 @@ help(BackgroundGenerator)
 import threading
 import sys
 
-if sys.version_info >= (3, 0):
-    import queue as Queue
-else:
-    import queue
+#if sys.version_info >= (3, 0):
+#    import queue as Queue
+#else:
+import queue
 
 
 class BackgroundGenerator(threading.Thread):
@@ -90,8 +90,8 @@ class BackgroundGenerator(threading.Thread):
         return next_item
 
     # Python 3 compatibility
-    def __next__(self):
-        return next(self)
+    #def __next__(self):
+    #    return next(self)
 
     def __iter__(self):
         return self

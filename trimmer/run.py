@@ -2,7 +2,8 @@ import argparse
 import os
 import multiprocessing
 
-from . import qiaseq_trimmer
+#from . import qiaseq_trimmer
+import qiaseq_trimmer
 
 def init_parser():
     '''
